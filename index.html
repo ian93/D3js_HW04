@@ -1,0 +1,167 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>D3.js HW04</title>
+    <script src="https://d3js.org/d3.v3.js"></script>
+    <style>
+        body{
+            background: #000;
+        }
+        .axis path, .axis line{
+            fill: none;
+            stroke: white;
+            shape-rendering: auto;
+        }
+        .axis text{
+            font-size: 10px;
+            font-weight: 600;
+            font-family: "arial";
+            fill: white;
+        }
+        .btn{
+            color: #ffa;
+            letter-spacing: 8px;
+            line-height: 24px;
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // 1. 定義width, height, padding, letterList變數
+        var w = 900;
+        var h = 600;
+        var p = 60;
+        
+        // 2. 建立svg()畫布環境
+        svg();       
+        
+        // 3. 用d3讀取csv
+        d3.csv("invoice.csv", mid, function(dataSet){
+//           console.log(dataSet);
+           bind(dataSet);
+           render(dataSet);
+           btnList(dataSet);
+        });
+        
+        //----------------資料處理區----------------
+        function btnList(dataSet){
+            var industryAry = dataSet.map(function(d){
+                return d.industry;
+            });
+            var uIndustryAry = unique(industryAry);
+            
+            d3.select("body").append("div").attr("class", "btn").text(uIndustryAry.join("/"));
+        }
+        
+        function unique(array){
+            var n = [];
+            for(var i = 0; i < array.length; i++){
+                if (n.indexOf(array[i]) == -1){
+                    n.push(array[i]);
+                }
+            }
+            return n;
+        }
+        
+        function mid(d) {
+            d.number = +d.number;
+            d.amount = +d.amount;
+            return d;
+        }
+        //----------------資料處理區 End----------------
+        
+        // 畫布格式
+        function svg(){
+            d3.select("body").append("svg").attr({
+                width: w,
+                height: h
+            });
+            d3.select("svg").append("g").append("rect").attr({
+                width: "100%",
+                height: "100%",
+                fill: "black"
+            });
+        }
+        
+        // 4. 建立bind()
+        function bind(dataSet){
+            var selection = d3.select("svg")
+                              .selectAll("circle")
+                              .data(dataSet);
+            selection.enter().append("circle");
+            selection.exit().remove();
+        }
+        
+        // 5. 定義xScale,yScale,rScale, fScale比例尺(range目的在決定在svg上位置)
+        function render(dataSet){
+            // x-axis 日期
+            var xScale = d3.time.scale()
+                                .domain([new Date("2013-01-01"),
+                                         new Date("2016-08-01")])
+                                .range([p, w-p]);
+            // y-axis 數量
+            var yScale = d3.scale.linear()
+                                 .domain([0, d3.max(dataSet, function(d){
+                                     return d.number;
+                                 })])
+                                 .range([h-p, p]);
+            // radius 金額
+            var rScale = d3.scale.linear()
+                                 .domain([d3.min(dataSet, function(d){
+                                     return d.amount;
+                                 }),
+                                          d3.max(dataSet, function(d){
+                                     return d.amount;
+                                 })])
+                                 .range([5, 30]);
+            
+            // city 城市
+            var fScale = d3.scale.category20();
+            
+            // y-axis 座標軸
+            var yAxis = d3.svg.axis()
+                              .scale(yScale)
+                              .orient("left")
+                              // ticks(optional) d3會自動產生刻度數量
+                              .ticks(7)
+                              .tickFormat(function(d){
+                                  return d/1000000 + "M";
+                              });
+            
+            // x-axis 座標軸
+            var xAxis = d3.svg.axis()
+                              .scale(xScale)
+                              .orient("bottom")
+                              .ticks(10);
+            
+            // 6. 建立render()繪圖
+            d3.selectAll("circle")
+              .attr({
+                  // 日期處理方法 new Date
+                  cx: function(d){ 
+                          return xScale(new Date(d.date)); },
+                  cy: function(d){
+                          return yScale(d.number); },
+                  r : function(d){
+                          return rScale(d.amount); },
+                  fill: function(d){
+                          return fScale(d.cid); }
+              });
+            
+            // 座標軸繪製
+            d3.select("svg").append("g")
+                            .attr("transform", "translate("+(p-15)+", 0)")
+                            // 可換成 .attr("id", "#axis")
+                            .attr("class", "axis")
+                            .call(yAxis);
+            
+            d3.select("svg").append("g")
+                            .attr("transform", "translate(0, "+(h-p+15)+")")
+                            .attr("class", "axis")
+                            .call(xAxis);
+        }
+    </script>
+
+</body>
+</html>
